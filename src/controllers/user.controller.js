@@ -14,6 +14,10 @@ const registerUser = asyncHandler( async (req,res) => {
     // remove and refresh token from response
     // check for user creation
     // if created return response
+    const validateEmail = (email) => {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return emailRegex.test(email);
+    };    
 
     // step-1
     const {fullName, username, email, password } = req.body
@@ -26,8 +30,13 @@ const registerUser = asyncHandler( async (req,res) => {
         throw new ApiError(400,"All feilds are required");
     }
 
+    // checking email is valid or not
+    if (!validateEmail(email)) {
+        throw new ApiError(400, "Invalid email format");
+    }
+
     // step-3
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ username }, { email }]
     })
 
