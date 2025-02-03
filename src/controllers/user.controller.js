@@ -3,17 +3,10 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
+import fs from "fs";
 
 const registerUser = asyncHandler( async (req,res) => {
-    // get user details from frontend
-    // validation (!empty or invalid email etc)
-    // check if user already exist: (by username or email)
-    // check if avatar is present 
-    // if availbale upload to cloudinary and get the url
-    // create a user object - create entry in db
-    // remove and refresh token from response
-    // check for user creation
-    // if created return response
+
     const validateEmail = (email) => {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         return emailRegex.test(email);
@@ -21,11 +14,11 @@ const registerUser = asyncHandler( async (req,res) => {
 
     // step-1
     const {fullName, username, email, password } = req.body
-    console.log(fullName,username,email,password);
+    // console.log(fullName,username,email,password);
     
     // Step-2
-    if([fullName,username,email,password].some((feild)=>
-        feild?.trim() === ""))
+    if([fullName,username,email,password].some((field)=>
+        field?.trim() === ""))
     {
         throw new ApiError(400,"All feilds are required");
     }
@@ -40,13 +33,28 @@ const registerUser = asyncHandler( async (req,res) => {
         $or: [{ username }, { email }]
     })
 
-    if(existedUser) throw new ApiError(409,"User already exists");
-
     // step-4
+    // console.log(req.files);
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length>0){
+        coverImageLocalPath = req.files.coverImage[0]?.path;
+    }
 
     if(!avatarLocalPath) throw new ApiError(400,"Avatar is Required");
+
+    if(existedUser){
+        fs.unlinkSync(avatarLocalPath);
+        if(coverImageLocalPath){
+            fs.unlinkSync(coverImageLocalPath);
+        }
+        return res.status(409).json({
+            message:"User already exist"
+        })
+    }
+
 
     // step-5
     const avatar = await uploadOnCloudinary(avatarLocalPath);
