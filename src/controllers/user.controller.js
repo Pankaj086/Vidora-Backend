@@ -2,7 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
-import uploadOnCloudinary from "../utils/cloudinary.js";
+import {uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import fs from "fs";
 import jwt from "jsonwebtoken";
 
@@ -155,8 +155,8 @@ const loginUser = asyncHandler( async (req,res) => {
 const logoutUser = asyncHandler( async (req,res) => {
     await User.findByIdAndUpdate(req.user._id,
         {
-            $set:{
-                refreshToken:undefined
+            $unset:{
+                refreshToken:1
             }
         },
         {
@@ -291,7 +291,10 @@ const updateUserAvatar = asyncHandler( async(req,res)=>{
         throw new ApiError(400,"Error while uploading avatar File");
     }
 
-    const user = User.findByIdAndUpdate(
+    let user = await User.findById(req.user?._id);
+    const oldAvatarUrl = user?.avatar;
+
+    user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
@@ -302,6 +305,10 @@ const updateUserAvatar = asyncHandler( async(req,res)=>{
             new:true
         }
     ).select("-password");
+
+    if(oldAvatarUrl){
+        await deleteFromCloudinary(oldAvatarUrl);
+    }
 
     return res
     .status(200)
@@ -323,7 +330,10 @@ const updateUserCoverImage = asyncHandler( async(req,res)=>{
         throw new ApiError(400,"Error while uploading Cover Image File");
     }
 
-    const user = User.findByIdAndUpdate(
+    let user = await User.findById(req.user?._id);
+    const oldCoverImageUrl = user?.coverImage;
+
+    user = User.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
@@ -334,6 +344,10 @@ const updateUserCoverImage = asyncHandler( async(req,res)=>{
             new:true
         }
     ).select("-password");
+
+    if(oldCoverImageUrl){
+        await deleteFromCloudinary(oldCoverImageUrl);
+    }
 
     return res
     .status(200)
